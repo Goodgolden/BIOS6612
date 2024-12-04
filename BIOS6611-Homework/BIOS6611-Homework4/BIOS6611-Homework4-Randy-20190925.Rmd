@@ -1,0 +1,169 @@
+---
+title: "BIOS6611-Homework4"
+author: "Randy"
+date: "9/25/2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+### 2a
+
+```{r}
+findPower <- function(diff, sd, n, alpha){
+z.alpha <- qnorm(1 - (alpha/2))
+power <- pnorm(diff/(sd/sqrt(n)) - z.alpha)
+return(power)
+}
+power.known <- findPower(100, 75, 5, 0.05)
+power.known
+```
+```{r}
+find.power <- power.t.test(n = 5, sd = 75, sig.level = 0.05, delta = 100, type = "one.sample", alternative = "two.sided")
+find.power$power
+
+```
+
+To reject the null hypothesis, we require the power to be larger than `r power.known`, if the population standard deviation is known;  if the standard deviation is unknown, the power would be `r find.power$power`
+
+_ _ _
+
+### 2b
+
+```{r}
+findN <- function(diff, sd, alpha, power){
+  N <- sd^2*(qnorm(power)+qnorm(1-alpha/2))^2/diff^2
+  N
+}
+findN( 100, 75, 0.05, 0.9)
+```
+```{r}
+find.n <- power.t.test( power = 0.9, sd= 75, sig.level = 0.05, delta = 100, type = "one.sample", alternative = "two.sided")
+find.n$n
+```
+
+If the standard deviation of the population is known, we get the minimum sample size shoule be 6; if the standard deviation of the population is unknown, the samle size should be bigger than 9.
+
+_ _ _
+
+### 2c
+
+
+```{r}
+findDiff <- function(n, sd, alpha, power){
+  Diff <- (qnorm(power)+qnorm(1-alpha/2))*sd/sqrt(n)
+  Diff
+}
+power.90 <- findDiff(5, 75, 0.05, 0.9); power.90
+power.80 <- findDiff(5, 75, 0.05, 0.8); power.80
+```
+
+According to the results, if the population standard deviation is known, then the smallest mean change for 90% power is `r power.90`; the smallesr mean change for 80% power is `r power.80`.
+
+
+```{r}
+find.diff.90 <- power.t.test(power = 0.9, sd = 75, sig.level = 0.05, n = 5, type = "one.sample", alternative = "two.sided")
+find.diff.90$delta
+find.diff.80 <- power.t.test(power = 0.8, sd = 75, sig.level = 0.05, n = 5, type = "one.sample", alternative = "two.sided")
+find.diff.80$delta
+```
+
+According to the results, if the population standard deviation is unknown, then the smallest mean change for 90% power is `r find.diff.90$delta`; the smallesr mean change for 80% power is `r find.diff.80$delta`.
+
+_ _ _
+
+### 3c.1
+
+```{r message=FALSE, warning=FALSE, paged.print=TRUE}
+set.seed(seed = 2345)
+n <- 5
+mean <- 0
+sd <- 75
+numTrials <- 10000
+alpha <- 0.05
+count<- 0
+for(i in 1:numTrials){
+  y.norm <- rnorm(n, mean, sd)
+  ttest <- t.test(y.norm, y = NULL, mu = 0, conf.level = 0.95)
+  if(ttest$p.value < alpha){
+    count <- count + 1
+  }
+}
+power.1 <- count/numTrials; power.1
+```
+
+The power is very near to the $\alpha$ value we set up as 0.05. Because the data we simulated are very similar to the population data, we got the power of the test very small. There will be very large probability we cannot detect the difference between the simulating data and the original data, which means we can hardly reject the null hypothesis.
+
+Is that means, if the two groups of data are exactly the same, the probability of Type I error is pretty much the same as the power of detecting the difference? Because the detection of the difference is the false positive error?
+
+```{r}
+set.seed(1796)
+mean <- 100
+sd <- 75
+n <- 5
+numTrials <- 10000
+alpha <- 0.05
+count<- 0
+for(i in 1:numTrials){
+  y.norm <- rnorm(n, mean, sd)
+  ttest <- t.test(y.norm, y = NULL, mu = 0, alternative = "two.sided",conf.level = 0.95)
+  count <- count + isTRUE( ttest$p.value < alpha)
+}
+count
+power.2 <- count/numTrials; power.2
+```
+
+For the second example, the distributions are pretty much the same. so it is impossible to detect the difference too, that is the reason why the power is so small. Moreover, the result is the same as the unknown standard deviation situation. Because the simulated data has its own sample standard deviation, even if we simulate the data with the population mean and standard deviation. so the result shoule be more near to a t-distribtion, other than the normal distributed. (although with big sample size, those two should be very similar to each other).
+
+### 3c.2
+
+```{r}
+compute_power <- function(n, mean, sigma, numTrials, alpha){
+sample = matrix(rnorm(n*numTrials, mean, sd), ncol=numTrials)
+xbar <- apply(sample, 2, mean)
+variance <- apply(sample, 2, var)
+matrix
+df.num = n-1 
+test.stat <- (xbar - 0)/sqrt(variance/n)
+return (mean(abs(test.stat) >= qt((1-(alpha/2)), df = df.num)))
+}
+set.seed(2345)
+compute_power(5, 0, 75, 10000, 0.05)
+```
+```{r}
+set.seed(1796)
+compute_power(5, 100, 75, 10000, 0.05)
+```
+
+As we can see, the simulated power under the null and alternative hypotheses through the compute_power function are exactly the same as the results we got from the the last question.
+
+_ _ _
+
+
+### 3c.3
+
+
+```{r}
+set.seed(seed=555)
+compute.power.1 <- function(N){
+  compute_power(N, 100, 75, 10000, 0.05)
+}
+compute.power.2 <- function(Delta){
+  compute_power(5, Delta, 75, 10000, 0.05)
+}
+library(purrr)
+N <- 1:20
+t(map(N, compute.power.1))
+Delta <- seq(0, 500, 50)
+t(map(Delta, compute.power.2))
+
+```
+
+It is almost impossible for us to simulated the estimated sample size and difference. We probably just try a series of different sample sizes and difference, and see which one fits in. As we can see in the example, if we get the sample size equal or larger than 8, we can get the power of 90%; we would also not recommond the sample size smaller than 6. The same for difference, if we get the difference between two groups is larger than 150, we can get the power over 90%.
+
+
+
+
+
+
+

@@ -1,0 +1,152 @@
+---
+title: "BIOS6611-Homework2"
+author: "Randy"
+date: "9/16/2019"
+output:
+  word_document: default
+  html_document: default
+---
+### Exercise 1: Discrete Distributions: Binomial and Poisson  
+
+
+#### Question 1a
+
+```{r Question1a, echo=TRUE, message=TRUE, warning=TRUE, paged.print=TRUE}
+bino.p <- pbinom( 0.025, size = 120, prob = 0.01 ); bino.p
+pois.p <- ppois( 0.025, lambda = 120 * 0.01 ); pois.p
+pois.p - bino.p
+```
+
+
+#### Question 1b
+
+```{r Question 1b.2, echo=TRUE, fig.height=3, fig.width=9, message=TRUE, warning=TRUE, paged.print=TRUE}
+n <- seq( 80, 400, by = 40)
+p <- seq( 0.0025, 0.025, by = 0.0025)
+np <- expand.grid( n = n, p = p)
+bino.s <- pbinom( 0.025, np$n, np$p)
+pois.s <- ppois( 0.025, lambda = np$n * np$p)
+comp.del <- pois.s - bino.s
+par( mfrow = c(1, 3) )
+plot( np$n, comp.del ); abline( h = 0.001, v = 100, col = c( "blue", "red" ) )
+plot( np$p, comp.del ); abline( h = 0.001, v = 0.01, col = c( "blue", "red" ) )
+plot( np$n * np$p, comp.del ); abline( h = 0.001, v = 100 * 0.01, col = c( "blue", "red" ) )
+```
+
+
+```{r Question 1c matrix?, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(ggplot2)
+np$p <- factor( np$p )
+ggplot( data = np, aes( x = p, y = comp.del, group = n, col = p)) + geom_line()
+```
+***ggplot( data = np, aes( x = p, y = comp.del, group = n, col = p)) + geom_line()***
+the code works but there is always error on png() device..
+
+#### Question 1c        
+
+The difference between the exact probability of binomial distribution and the approximation from possion distribution decreases with larger sample size and small prevalence. I would suggest her to use the approximation with solely p ≤ 0.005 or n ≥ 300; but combine the sample size and the prevalence together, I would recommond just as Rosner: a conservative rule to use the approximation when n ≥ 100 and p ≤ 0.01.      
+
+___
+
+
+### Exercise 2: Expected Value and Variance for Exponential Distribution 
+
+
+#### Question 2a     
+$X\sim{\sf Exponential}(\lambda)$   
+
+$$E[X]=\int_{0}^{\infty} xf(x) \; dx\ =
+\int_{0}^{\infty} x \frac{e^{-x/\lambda}}{\lambda}\; dx\ =
+\left. -xe^{-x/\lambda} \right|_{0}^{\infty}\ + \int_{0}^{\infty} e^{-x/\lambda}\; dx\ $$    
+
+$$= \left. -\lambda e^{x/\lambda} \right|_{0}^{\infty} = 0 - [-\lambda] = \lambda$$
+Now we know that the $\lambda = 1/3$, then $E(X)= \lambda = 1/3$; Sally has to expect to wait for another 1/3 hour in the line.  
+
+
+#### Question 2b
+
+$X\sim{\sf Exponential}(\lambda)$  
+
+$$Var[X]=E[(X-\lambda)^2]=\int_{0}^{\infty} (x-\lambda)^2f(x) \; dx\ - \lambda^2 = \int_{0}^{\infty} x^2 \frac{e^{-x/\lambda}}{\lambda}\; dx\ - \lambda^2$$
+$$=\int_{0}^{\infty} (x^2-2x\lambda+\lambda^2) \frac{e^{-x/\lambda}}{\lambda}\; dx$$ 
+$$= \int_{0}^{\infty}x^2\frac{e^{-x/\lambda}}{\lambda}\;dx\ -2\lambda \int_{0}^{\infty}x\frac{e^{-x/\lambda}}{\lambda}\;ds\ +  \int_{0}^{\infty} \lambda e^{-x/\lambda}\;dx$$
+$$=2\lambda^2-2\lambda ^2+\lambda^2 = \lambda^2$$
+So the variation around this estimation is $\lambda^2$
+
+
+#### Question 2c
+
+
+```{r Question 2c, echo=TRUE, message=TRUE, warning=TRUE, paged.print=TRUE}
+set.seed( seed = 555 )
+exp.r <- rexp( n = 100000, rate = 3)
+mean( exp.r ); var( exp.r )
+```
+The simulation mean is very near to the theoretical mean $\lambda$ = 1/3; and the variation is similar to $\lambda^2$ = 1/9.
+
+
+#### Question 2d
+
+
+I would assume Sally has to wait for another 1/3 hour. Because for exponential distribution, every instant is like the beginning of a new period. That means she has to go over the same distribution regardless of how much time has already elapsed. 
+
+___
+
+### Exercise 3: Ozone Status for Normal Approximation to the Binomial
+
+#### Question 3a
+```{r Quesiton 3a, echo=TRUE, message=TRUE, warning=TRUE, paged.print=TRUE}
+ozone <- read.csv("ozone.csv")
+ozone <- data.frame(ozone)
+n.ozone <- length( ozone$AQI.Category )
+ozone.good <- ozone[ozone$AQI.Category == "Good", ] 
+n.ozone.good <- length( ozone.good$AQI.Category )
+n.ozone; n.ozone.good
+p.ozone.good <- n.ozone.good / n.ozone; p.ozone.good
+```
+
+So the daily probability of "good" ozone levels is `r p.ozone.good`
+
+
+#### Question 3b
+
+```{r}
+ozone.good.567 <- dbinom( x=5:7, size = 7, prob = p.ozone.good )
+sum(ozone.good.567)
+```
+So the exact probability of at least 5 of the 7 days will have "good" ozone is `r sum(ozone.good.567)`
+
+#### Question 3c
+
+```{r}
+ozone.mu.ap <- 7 * p.ozone.good;  ozone.sigma.ap <- sqrt(7 * p.ozone.good * ( 1 - p.ozone.good  ) )
+ozone.mu.ap; ozone.sigma.ap
+z.ozone.5less <- (4.5 - ozone.mu.ap) / ozone.sigma.ap; p.ozone.5less.ap <- pnorm( z.ozone.5less ); p.ozone.567.ap <- 1 - p.ozone.5less.ap; p.ozone.567.ap
+```
+So from the result, we can see the probability of normal distribution approximation `r p.ozone.567.ap` is pretty near to the probability of real binomial distribution 0.2783011.
+
+#### Question 3d
+let's select the random 100 days for 100 times check whether the ozone "good" days mean and variation follow binomial distribution.
+```{r}
+set.seed( seed = 555)
+ozone.good <- function( days )
+{
+  index <- sample( n.ozone, days , replace = F)
+  ozone.sp <- ozone[index, ]
+  ozone.sp.good <- ozone.sp[ ozone.sp$AQI.Category == "Good", ]
+  n.ozone.good <- length( ozone.sp.good$AQI.Category )
+  n.ozone.good
+}
+ozone.result <- sapply( rep(100, 100), FUN = ozone.good );
+summary(ozone.result)
+mean(ozone.result)
+ozone.bin.mean <- 100 * p.ozone.good; ozone.bin.mean
+var(ozone.result) * 100
+ozone.bin.var <- 100 * p.ozone.good * ( 1 - p.ozone.good); ozone.bin.var
+```
+
+According to the random samples, the mean of the "good" ozone days is pretty near to the theoretical binomial distribution mean, however the variance is not similar to the theoretical binomial distribution variance. So the "good" ozone days do not follow binomial distribution.
+
+
+
+

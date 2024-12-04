@@ -1,0 +1,224 @@
+---
+# "BIOS6611-Homework3"
+## The Central Limit Theorem and Functions of Random Variables 
+---
+
+
+### A. The Central Limit Theorem
+
+
+#### Question1a
+
+
+```{r}
+set.seed(seed = 55)
+binom.mean <- function(n, rp){
+  v.mean <- rep( NA, 500)
+  for(i in 1:rp){
+    binom.v <- rbinom(n, size = 1, p = 0.15)
+    v.mean[i] <- mean(binom.v)
+  }
+   v.mean
+}
+binom.10 <- binom.mean(10, 500)
+head(binom.10)
+mean(binom.10)
+```
+
+
+#### Question1b
+
+
+```{r}
+binom.20 <- binom.mean(20, 500)
+binom.30 <- binom.mean(30, 500)
+binom.40 <- binom.mean(40, 500)
+binom.50 <- binom.mean(50, 500)
+```
+
+
+#### Question1c
+
+
+```{r}
+binom.sample= list(binom.10, binom.20, binom.30, binom.40, binom.50)
+binom.mu <- sapply(binom.sample, mean)
+binom.sigma <- sapply(binom.sample, sd)
+rbind(binom.mu, binom.sigma)
+```
+
+
+#### Question1d
+
+
+```{r}
+par(mfrow=c(2,3))
+hist(binom.10, xlab = "Sample Mean", ylab = "Frequency", main = "Histogram of 500 mean in Bin(10, 0.15)")
+hist(binom.20, xlab = "Sample Mean", ylab = "Frequency", main = "Histogram of 500 mean in Bin(20, 0.15)")
+hist(binom.30, xlab = "Sample Mean", ylab = "Frequency", main = "Histogram of 500 mean in Bin(30, 0.15)")
+hist(binom.40, xlab = "Sample Mean", ylab = "Frequency", main = "Histogram of 500 mean in Bin(40, 0.15)")
+hist(binom.50, xlab = "Sample Mean", ylab = "Frequency", main = "Histogram of 500 mean in Bin(50, 0.15)")
+```
+
+
+#### Question1e
+
+
+As we increase the sample size, the distribution of the sample mean gets more and more normal. The sample size n=50 begins to look like normal.
+
+
+_ _ _
+
+
+### B. The CLT and the Cauchy Distribution
+
+
+```{r}
+set.seed(seed = 55)
+cauchy.mean <- function(n,rp){
+  v.mean <- rep( NA, 500)
+  for(i in 1:rp){
+    cauchy.v <- rcauchy(n)
+    v.mean[i] <- mean(cauchy.v)
+  }
+   v.mean
+}
+
+cauchy.10 <- cauchy.mean(10, 500)
+cauchy.50 <- cauchy.mean(50, 500)
+cauchy.100 <- cauchy.mean(100, 500)
+cauchy.1000 <- cauchy.mean(1000, 500)
+par(mfrow=c(2, 2))
+hist(cauchy.10, xlab = "Sample Mean", ylab = "Frequency", main = "Histogram of 500 mean in Cauchy(10)")
+hist(cauchy.50, xlab = "Sample Mean", ylab = "Frequency", main = "Histogram of 500 mean in Cauchy(50)")
+hist(cauchy.100, xlab = "Sample Mean", ylab = "Frequency", main = "Histogram of 500 mean in Cauchy(100)")
+hist(cauchy.1000, xlab = "Sample Mean", ylab = "Frequency", main = "Histogram of 500 mean in Cauchy(1000)")
+```
+
+
+
+No matter how large of the sample size, the sample means of Cauchy distribution are not normal at all.  The CLT does not apply to Cauchy.
+
+
+_ _ _
+
+
+### C. Estimating Hospital Budget
+
+
+#### Part1
+
+
+```{r}
+ProcedureCost <- read.csv("C:/Users/Goodgolden5/Desktop/BIOS6611-Alexander Kaizer/ProcedureCost.csv")
+Group1 <- ProcedureCost[ProcedureCost$Procedure == 1, ]
+Group1.Zero <- Group1[Group1$Cost == 0, ]
+Group1.NZero <- Group1[Group1$Cost != 0, ]
+Group2 <- ProcedureCost[ProcedureCost$Procedure == 2, ]
+Group2.Zero <- Group2[Group2$Cost == 0, ]
+Group2.NZero <- Group2[Group2$Cost != 0, ]
+Group1.r <- cbind(length(Group1.Zero$Cost), length(Group1.NZero$Cost))
+Group2.r <- cbind(length(Group2.Zero$Cost), length(Group2.NZero$Cost))
+Cost.matrix <- rbind(Group1.r, Group2.r)
+Cost.matrix
+```
+
+
+
+
+
+#### Part2
+
+
+```{r}
+p1 <- Cost.matrix[1, 2]/sum(Cost.matrix[1, ]); p1
+p2 <- Cost.matrix[2, 2]/sum(Cost.matrix[2, ]); p2
+m1 <- mean(Group1.NZero$Cost); m1
+m2 <- mean(Group2.NZero$Cost); m2
+v1 <- var(Group1.NZero$Cost); v1
+v2 <- var(Group2.NZero$Cost); v2
+```
+
+
+#### Part3
+
+
+If the random variable R and Z are independent:
+$$E[Y_i]=E[R_iZ_i]=Pr(R=i)*E[Z_i]=m_ip_i$$
+$$Var[Y_i]= Var[R_iZ_i] = E[(R_iZ_i)^2]-E^2[R_iZ_i]$$
+$$=E[R_i^2Z_i^2]-E^2[R_i]E^2[Z_i]=E[R_i^2]E[Z_i^2]-E^2[R_i]E^2[Z_i]$$
+$$=(p_i^2+p_i(1-p_i))(v_i+m_i^2)-p_i^2m_i^2=p_iv_i + p_im_i^2-p_i^2m_i^2 $$
+
+$$Var[Y_i]=p_iv_i+p_im_i^2-p_i^2m_i^2$$
+
+#### Part4
+
+
+It is definitely the qnorm will be applied. We have to recalculate the total sample mean and variance by sum up the each subset. 
+
+$$E[Y]=E[RZ]=(n_1*E[Y_1]+n_2*E[Y_2])/(n_1+n_2)$$
+
+$$Var[Y]=(n_1*Var[Y_1]+n_2*Var[Y_2])/(n_1+n_2)$$
+$$\sigma=\sqrt{Var[Y]}$$
+
+
+```{r}
+n1 <- 120; n2 <- 200
+e1 <- m1 * p1; e1
+e2 <- m2 * p2; e2
+e <- (n1 * e1 + n2 * e2); e
+var1 <- p1*v1 + p1*m1^2 - p1^2 * m1^2; var1
+var2 <- p2*v2 + p2*m2^2 - p2^2 * m2^2; var2
+var <- (n1 * var1 + n2 * var2); var
+sigma <- sqrt(var); sigma
+set.seed( seed = 555)
+qnorm( 0.8, mean = e, sd = sigma) 
+```
+
+
+#### Part5
+
+
+So, the Gamma distributed simulation is very near to the expected budget we got from Part2, and Part4.
+
+
+```{r}
+set.seed( seed = 555 )
+Z1 <- 1:10000
+Z2 <- 1:10000
+Z <- 1:10000
+for( i in 1:10000){
+  Z1[i] <- sum(rgamma( n1, shape = e1^2/var1, scale = var1/e1))
+  Z2[i] <- sum(rgamma( n2, shape = e2^2/var2, scale = var2/e2))
+  Z[i] = Z1[i] + Z2[i]
+}
+
+par(mfrow=c(2,2))
+hist(Z1)
+hist(Z2)
+hist(Z)
+quantile(Z, )
+quantile(Z, 0.8)
+## This one is just for recheck 
+qgamma(0.8, shape = e^2/var, scale = var/e)
+qnorm( 0.8, mean = e, sd = sigma)
+
+```
+
+
+#### Part6
+
+
+a. I would assum the simulation sample is large enough (in this case, n1=120, n2=200, or n=320).   
+
+***I really have no idea what the question is asking..., because I do not know what will happen if sample size is very small. especially the n1 = 120 has a more accurate approximation than n2 = 200.***
+
+
+```{r}
+e1*n1; mean(Z1); (e1*n1 - mean(Z1))/(e1*n1)
+e2*n2; mean(Z2); (e2*n2 - mean(Z2)) / (e2*n2)
+e; mean(Z); (e - mean(Z)) / e
+```
+
+
+b. I would assume that the level of accuracy is around 0.001 for the approximation via simulation.

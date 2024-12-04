@@ -1,0 +1,208 @@
+---
+title: "BIOS6611-Homework5-Randy-20191001"
+author: "Randy"
+date: "10/1/2019"
+output: word_document
+---
+
+##### Question1A: calculate the sensitivity and specificity
+
+```{r}
+DN <- c(0,0,3,9,16,18)
+DY <- c(2,1,4,5,3,1)
+a <- sum(DY[1:4])
+b <- sum(DN[1:4])
+c <- sum(DY[5:6])
+d <- sum(DN[5:6])
+diagnosis <- as.table(matrix(c(a,b,c,d), ncol=2, byrow=TRUE))
+dimnames(diagnosis) <- list(CMMS=c("Less", "More"), ClinicDiagnosis=c("DementedN","DementedY"))
+diagnosis
+
+sensitivity <- function(M){
+  sen <- M[1,1]/sum(M[, 1])
+  cat("The sensitivity is", sen, "\n")
+} 
+sensitivity(diagnosis)
+
+specificity <- function(M){
+  spe <- M[2,2]/sum(M[, 2])
+  cat("The specificity is", spe, "\n")
+} 
+specificity(diagnosis)
+```
+
+_ _ _
+
+##### Question1B: Make a table showing sensitivity and specificity
+for cut-off values of 5, 10, 15, 20, 25, or 30. 
+
+```{r}
+DN <- c(0,0,3,9,16,18,0)
+DY <- c(2,1,4,5,3,1,0)
+TableSS <- function(n){
+  a <- sum(DY[1:n])
+  b <- sum(DN[1:n])
+  c <- sum(DY[(n+1):7])
+  d <- sum(DN[(n+1):7])
+  M <- as.table(matrix(c(a,b,c,d), ncol=2, byrow=TRUE))
+  sen <- M[1,1]/sum(M[, 1])
+  spe <- M[2,2]/sum(M[, 2])
+  return(list(sen, spe))
+}
+library(purrr)
+result1 <- unlist(map(1:6, TableSS))
+
+css1 <- as.table(matrix(result1, nrow=2))
+dimnames(css1) <- list( Attributes=c( "sensitivity","specificity"),  The_cut_off_value_for_CMMS_Score= c("5","10","15","20","25","30"))
+css1
+```
+
+_ _ _
+
+##### Question1C: a possible consequence of a false positive, then a possible consequence of a false negative.
+
+
+If the diagnosis is a flase positive, a healthy person might get mental stress and treatment unnecessary. Especially, there are certain side effects with Cholinesterase inhibitors, such as donepezil, rivastigmine, and galantamine. The side effects include nausea, vomiting and diarrhea. Other possible side effects include cardiovascular irregulation, fainting and sleep disturbances. 
+
+If the diagnosis is false negative, there will be a delay for the treatment and severe the demetia symptoms. Especially for the depression, parkinsonism oragitation, it costs the life quality for the patients and the family.
+
+_ _ _
+
+##### Question1D: select a cut-off for the CMMS, assuming CMMS false
+positives and false negatives are equally undesirable 
+```{r}
+DN <- c(0,0,3,9,16,18,0)
+DY <- c(2,1,4,5,3,1,0)
+TableNP <- function(n){
+  a <- sum(DY[1:n])
+  b <- sum(DN[1:n])
+  c <- sum(DY[(n+1):7])
+  d <- sum(DN[(n+1):7])
+  M <- as.table(matrix(c(a,b,c,d), ncol=2, byrow=TRUE))
+  fnr <- M[2,1]/sum(M[, 1])
+  fpr <- M[1,2]/sum(M[, 2])
+  return(list(fnr, fpr))
+}
+result2 <- unlist(map(1:6, TableNP))
+css2 <- as.table(matrix(result2, nrow=2))
+dimnames(css2) <- list( Attributes=c( "FNR","FPR"),  The_cut_off_value_for_CMMS_Score= c("5","10","15","20","25","30"))
+css2
+
+```
+
+The cut-off score of 20 is equally undesirable for the for false positive and false negative values. It has really both higher FPR `r css2[2,4]` and higher FNR `css2[1,4]`
+
+_ _ _
+
+##### Question1E: Plot the ROC curve and obtain the AUC using R
+
+```{r}
+library(Epi) #load library
+DN <- c(0,0,3,9,16,18)
+DY <- c(2,1,4,5,3,1)
+cutoff <- seq(5,30, by=5)
+DementY <- rep(cutoff, DY)
+y <- DementY
+y[] <- 1
+DementX <- rep(cutoff, DN)
+x <- DementX
+x[] <- 0
+DemInf <- c(x,y)
+CMMS <- c(DementX, DementY)
+DemCMMS <- as.data.frame(cbind(CMMS,DemInf))
+par(col = "blue", lty = 2)
+ROC(form = DemInf~CMMS, data = DemCMMS, plot = "ROC", PV = T, MI = F, grid = F, AUC = F)
+
+library(pROC)
+auc(DemInf, CMMS)
+
+```
+
+
+Because the plots and the ROC show the same shape, I would assume that the AUC are the same for these two tests. The AUC is 0.8091; it is larger than 0.5 but not quite near to 1. CMMS can discriminates between people with and without dementia, but not very accurate. 
+
+_ _ _
+ 
+##### Question1F: Extra Credit: Plot the ROC curve using your answers in B.  How similar is it to the AUC from part E?
+
+```{r}
+sensitivity <- css1[1,]
+specificity <- css1[2,]
+plot(1-specificity, sensitivity, type = "b")
+
+part.auc <- function(a){
+  s <- 1/2*(sensitivity[a]+sensitivity[a+1])*(specificity[a]-specificity[a+1])  
+}
+n <- 1:5
+unlist(map(n, part.auc))
+
+trapezoid <- sum(unlist(map(n, part.auc)))
+trapezoid
+
+```
+
+Based on the trapezoid rule, the result of the AUC is the same as the result from pROC package, auc() function. They are exactly the same.
+
+_ _ _
+
+##### Question1G: Comment on the difference in the sets of predictive values for the two prevalence values.
+
+```{r message=FALSE, warning=FALSE}
+DN <- c(0,0,3,9,16,18,0)
+DY <- c(2,1,4,5,3,1,0)
+TablePV <- function(n){
+  a <- sum(DY[1:n])
+  b <- sum(DN[1:n])
+  c <- sum(DY[(n+1):7])
+  d <- sum(DN[(n+1):7])
+  M <- as.table(matrix(c(a,b,c,d), ncol=2, byrow=TRUE))
+  ppv <- M[1,1]/sum(M[1, ])
+  npv <- M[2,2]/sum(M[2, ])
+  return(list(ppv, npv))
+}
+result3 <- unlist(map(1:4, TablePV))
+css3 <- as.table(matrix(result3, nrow=2))
+dimnames(css3) <- list( Attributes=c( "PPV","NPV"),  The_cut_off_value_for_CMMS_Score= c("5","10","15","20"))
+css3
+sensitivity <- css1[1,]
+specificity <- css1[2,]
+PPV_10 <- sensitivity*0.1/((sensitivity*0.1)+(1-specificity)*0.9)
+PPV_40 <- sensitivity*0.4/((sensitivity*0.4)+(1-specificity)*0.6)
+NPV_10 <- specificity*0.9/((1-sensitivity)*0.1+specificity*0.9)
+NPV_40 <- specificity*0.6/((1-sensitivity)*0.4+specificity*0.6)
+rbind( PPV_10, css3["PPV",], PPV_40, NPV_10, css3["NPV",], NPV_40)
+
+```
+
+"PPV and NPV are very dependent on prevalence. Using study prevalence is not appropriate when calculating their values, unless it's from a large prospective study from which prevalence can be well estimated." from lecture 9 notes.
+
+_ _ _
+
+##### Question1Hi: Is there a single cutoff that makes the CMMS a good test for both ruling in and ruling out dementia?
+
+```{r}
+LR_plus <- sensitivity/(1-specificity)
+LR_minus <- (1-sensitivity)/specificity
+LR <- as.table(matrix(c(LR_plus, LR_minus), nrow=2, byrow=TRUE))
+dimnames(LR) <- list(Attributes=c("LR+", "LR-"), The_cut_off_value_for_CMMS_Score= c("5","10","15","20","25","30"))
+LR
+```
+
+There is not a single cutoff that makes the CMMS a good test for both ruling in and ruling out dementia.
+
+_ _ _
+
+
+##### Question1Hii: Obtain the posterior odds of dementia and the posterior odds of no dementia for the various combinations of LR+ and LR-.
+
+
+```{r}
+prior_odd <- 0.3 
+prior_p <- prior_odd/(1+prior_odd)
+postior_odd_D <- prior_odd * LR_plus
+postior_odd_N <- (1-prior_p)/prior_p * 1/LR_minus
+postior_odd_D; postior_odd_N
+```
+
+Postior odds for dementia decreas with the cutoff scores, closely associated with LR+; in the contrast, the postior odds for non-dementia increases with cutoff socres, associated with LR-.
+

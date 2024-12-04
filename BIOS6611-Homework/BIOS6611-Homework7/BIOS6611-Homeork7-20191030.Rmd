@@ -1,0 +1,117 @@
+---
+title: "BIOS6611-Homework7-Randy-20191024"
+author: "Randy"
+date: "10/24/2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+####    Question1a
+
+A study based on 1,500 observations using the SOC identified a median LOS of 9 days. For both hospitals, test if their median LOS is significantly different from the historic median of 9 days using a function in R (e.g., wilcox.exact, binom.test, SIGN.test, etc.)
+and interpret your results.
+
+```{r}
+library(exactRankTests)
+library(BSDA)
+NewLOS<-c(3, 3, 4, 5, 5, 5, 6, 7, 7, 8, 9, 15)
+SOCLOS<-c(6, 7, 7, 7, 8, 8, 8, 9, 9, 10, 10, 11, 13, 13, 15)
+SIGN.test(NewLOS, m=9)
+SIGN.test(SOCLOS, m=9)
+```
+
+For the New LOS median is significantly different from the historic median of 9 days with Sign test; however, the SOC LOS median is the same as the historic median of 9 days with Sign test.
+
+
+####    Question1b
+
+reate a 2x1 panel figure showing histograms of the LOS for Cauchy General and Skellam Memorial that have a range from 0 to 16 for their x-axis, have bins of width 2 (e.g., “breaks” at 0, 2, 4, 6, …, 14, and 16 in the base R hist function), and informative titles and labels. [Hint: One option to creating a panel figure is to use par( mfrow=c( number rows, number columns ) ).]
+
+```{r}
+par(mfrow=c(2, 1))
+hist(NewLOS, main="Histogram of New LOS", xlim=c(0, 16), xaxt = 'n', breaks=c(seq(0, 16, by=2)))
+axis(1, at = 2*(0:20))
+hist(SOCLOS, main="Histogram of SOC LOS", xlim=c(0, 16), xaxt = 'n',  breaks=c(seq(0, 16, by=2)))
+axis(1, at = 2*(0:20))
+```
+
+
+####    Question1c
+
+Carry out a nonparametric procedure for testing the hypothesis that lengths of stay are comparable in the two hospitals by using a function in R (e.g., wilcox.exact, binom.test, SIGN.test, etc.). For your interpretation, if appropriate, reference your histogram from
+part (b) for discussion of the shape of the two groups.
+
+```{r}
+wilcox.test(NewLOS, SOCLOS, alternative = "two.sided", paired = FALSE, exact = F, correct = F)
+
+wilcox.exact(x=NewLOS, y=SOCLOS, alternative = "two.sided", paired = FALSE, exact = F, correct = T)
+```
+According to the test, the p-value is less than 0.05 so we reject the null hyothesis that the two sample have the same distribution. According to the graphs, we can see the New's distribution is left shifted than the SOC, which is consistant with the results.
+
+_ _ _
+
+####    Question2
+
+After correction, which SNPs show statistically significant effects?
+
+```{r}
+SNPpvalue <- c(0.04,0.100,0.400,0.550,0.340,0.620,0.001,0.010,0.800,0.005)
+Number <- 1:length(SNPpvalue)
+SNPpvalueAdj <- p.adjust(SNPpvalue, method="BH", n=length(SNPpvalue))
+SNPAdj<-as.data.frame(cbind(Number, SNPpvalue, SNPpvalueAdj))
+SNPAdj[SNPpvalue<=0.05,]
+SNPAdj[SNPpvalueAdj<=0.05,]
+```
+
+
+So the FDR adjustment gives a larger p-values. the SNPs still have a p-value less than 0.05 are `r SNPAdj[7, 8, 10]`
+
+_ _ _
+
+####    Question3a     
+
+Assume that the variances across the groups are equal and test the hypothesis that there is an overall mean difference in bronchial reactivity among the three lung-function
+groups.
+
+```{r warning=TRUE}
+library(tidyverse)
+FEVFVC <- data.frame(Group = c( rep("A", 5), rep("B", 12), rep("C", 5)), Volume = c(20.8, 4.1, 30.0, 24.7, 13.8, 7.5, 7.5, 11.9, 4.5, 3.1, 8.0, 4.7, 28.1, 10.3, 10.0, 5.1, 2.2, 9.2, 2.0, 2.5, 6.1, 7.5))
+FEVFVCaov <- aov(Volume~Group, data = FEVFVC)
+summary(FEVFVCaov)
+```
+
+####    Question3b
+
+If justified, compare the means of each pair of groups using the Tukey HSD method and summarize the results. Otherwise note why it isn’t justified.
+
+```{r warning=FALSE}
+library(MASS)
+library(DescTools)
+pairwise.t.test(x=FEVFVC$Volum, g=FEVFVC$Group, p.adjust="none", alternative = c("two.sided"))
+
+TukeyHSD(FEVFVCaov)
+PostHocTest(FEVFVCaov, method=c('hsd') )
+```
+
+TukeyHSD (Tukey Honest Significant Differences) gives us the adjusted p-values. 
+
+
+####    Question3c   
+
+Carry out part (a) assuming that the variances across the groups are
+not equal. If justified, describe a way to compare the means of each pair of groups, but do not carry out any further analysis.
+
+```{r}
+bartlett.test(log(Volume) ~ Group, data=FEVFVC)
+FEVFVC_logaov <- aov(log(Volume) ~ Group, data = FEVFVC)
+summary(FEVFVC_logaov)
+
+oneway.test(Volume ~ Group, data=FEVFVC, var.equal=FALSE) 
+pairwise.t.test(x=log(FEVFVC$Volum), g=FEVFVC$Group, p.adjust="BH", alternative = c("two.sided"), var.equal=FALSE)
+```
+
+
+First I will run the BOx-Cox test for the transformation, and run the log transformation for the data. After the transformation, based on the Bartlett, the data is with equal variance. Then do the ANOVA test on the log-transformed data. 
+
+Otherwise, we can directly use the Welch's ANOVA for unequal varianced data, and do the pairwised Welch's t tests for the post hoc tests with approperate adjustment.  

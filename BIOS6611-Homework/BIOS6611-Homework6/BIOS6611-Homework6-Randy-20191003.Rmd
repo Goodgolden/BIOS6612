@@ -1,0 +1,219 @@
+---
+title: "BIOS6611-Homework6-20191003"
+author: "Randy"
+date: "10/3/2019"
+output:
+  word_document: default
+  html_document: default
+---
+##### Question1.i.a
+```{r Question1-i-a }
+ProCost <- read.csv("C:/Users/Goodgolden5/Desktop/BIOS6611-Alexander Kaizer/BIOS6611-Dataset/ProcedureCost.csv")
+ProNew <- ProCost[ProCost$Procedure == 2, ]
+par(mfrow = c(2,2))
+hist(ProNew$Cost, main = "Histogram of New Procedure Cost", xlab = "Cost of New Procedure")
+qqnorm(ProNew$Cost); qqline(ProNew$Cost)
+boxplot(ProNew$Cost, xlab  = "New Procedure", ylab = "Cost", main = "Boxplot of New Procedure Cost")
+hist(log(ProNew$Cost), main = "Histogram of log-Cost")
+```
+
+
+##### Question1.i.b
+The data was not normal distributed, not bell-shaped, not symmetric, and terriblly right skewed.
+
+
+##### Question1.i.c
+
+
+```{r}
+summary(ProNew$Cost)
+ObMean <- mean(ProNew$Cost)
+ObMed <- median(ProNew$Cost)
+ObSD <- sd(ProNew$Cost)
+cat("The observation mean is", ObMean, "\n")
+cat("The observation median is", ObMed, "\n")
+cat("The observation standard deviation is", ObSD, "\n")
+```
+The mean is`r mean(ProNew$Cost)`, the median is `r median(ProNew$Cost)`. The median is less than the mean, again to prove the data is`r sd(ProNew$Cost)`
+
+
+##### Question1.i.d
+
+
+```{r}
+set.seed(seed = 555)
+par(mfrow = c(2,2))
+N <- 10^5
+Bootstrap.mean <- vector("numeric", length(ProNew$Cost))
+for(i in seq_along(1:N)){
+  Bootstrap <- sample(ProNew$Cost, length(ProNew$Cost), replace = T)
+  Bootstrap.mean[i] <- mean(Bootstrap)
+}
+hist(Bootstrap.mean, main = "Bootstrap distribution of mean")
+abline(v = mean(Bootstrap.mean), col = "red", lwd = 2)
+qqnorm(Bootstrap.mean)
+qqline(Bootstrap.mean)
+boxplot(Bootstrap.mean, xlab = "Bootstrap-New-Cost")
+```
+
+##### Question1.i.e Describe the shape and spread
+The distribution of the Bootstrap mean are symmetrical, normal-like distributed.
+
+
+##### Question1.i.f
+
+
+```{r}
+BootstrapMean <- mean(Bootstrap.mean)
+BootstrapMed <- median(Bootstrap.mean)
+BootstrapSD <- sd(Bootstrap.mean)
+BootstrapBias <- BootstrapMean-ObMean
+cat("The Bootstrap mean is", BootstrapMean, "\n")
+cat("The Bootstrap median is", BootstrapMed, "\n")
+cat("The Bootstrap standard deviation is", BootstrapSD, "\n")
+cat("The Bootstrap bias is", BootstrapBias, "\n")
+```
+
+
+##### Question1.i.g
+
+
+```{r}
+LL <- BootstrapMean-1.96*BootstrapSD
+UL <- BootstrapMean+1.96*BootstrapSD
+LCI <- sum(Bootstrap.mean<LL)/N
+UCI <- sum(Bootstrap.mean>UL)/N
+cat("Coverage of CI is", LL, "to", UL, "\n" )
+
+BootstrapCI <- quantile(Bootstrap.mean, c(0.025, 0.975))
+cat("Bootstrap precentile 95% CI is", BootstrapCI, "\n")
+```
+
+
+##### Question1.ii.a
+
+
+```{r}
+ProNew <- ProCost[ProCost$Procedure == 2, ]
+ProOld <- ProCost[ProCost$Procedure == 1, ]
+NewMean <- mean(ProNew$Cost); NewSD <- sd(ProNew$Cost); NewL <- length(ProNew$Cost)
+cat("The New Procedure mean is", NewMean, "\n")
+cat("The New Procedure standard is", NewSD, "\n")
+cat("The New Procedure length is", NewL, "\n","\n")
+OldMean <- mean(ProOld$Cost); OldSD <- sd(ProOld$Cost); OldL <- length(ProOld$Cost)
+cat("The Old Procedure mean is", OldMean, "\n")
+cat("The Old Procedure standard is", OldSD, "\n")
+cat("The Old Procedure length is", OldL, "\n")
+```
+
+```{r}
+BootRatio <- vector("numeric", N)
+for (i in 1:N){
+  BootNew <- sample(ProNew$Cost, NewL, replace = TRUE)
+  BootOld <- sample(ProOld$Cost, OldL, replace = TRUE)
+  BootRatio[i] <- (mean(BootNew)/mean(BootOld))
+}
+par(mfrow = c(2,2))
+hist(BootRatio, main = "Bootstrap ratio of mean cost New/Standard", xlab = "Cost ratio of New/Standard")
+abline(v = mean(BootRatio), col = "red", lwd = 2)
+qqnorm(BootRatio); qqline(BootRatio)
+boxplot(BootRatio, xlab = "Bootstrap-New/Standard-Cost-Ratio")
+```
+
+```{r}
+ObRatio <- NewMean/OldMean
+BootRatioMean <- mean(BootRatio)
+BootRatioBias <- ObRatio-BootRatioMean
+BootRatioSD <- sd(BootRatio)
+BootRule <- BootRatioBias/BootRatioSD
+cat("The Real Ratio of mean cost is", ObRatio, "\n")
+cat("The Bootstrap Ratio of mean cost is", BootRatioMean, "\n")
+cat("The Bias of mean cost ratio is", BootRatioBias, "\n")
+cat("The Standard Error of mean cost ratio is", BootRatioSD, "\n")
+cat("The Thumb Rule value is", BootRule, "< 0.1","\n")
+```
+
+
+##### Question1.ii.b
+
+
+```{r}
+LL <- BootRatioMean-1.96*BootRatioSD
+UL <- BootRatioMean+1.96*BootRatioSD
+cat("Bootstrap Cost Ratio Coverage of CI is", LL, "to", UL, "\n" )
+BootRatioCI <- quantile(BootRatio, c(0.025, 0.975))
+cat("Bootstrap precentile 95% CI is", BootRatioCI, "\n")
+```
+Because the distribution of the bootstrap estimate for Cost ratio is not strictly normal distributed, the approximation from normal distribution is not as accurate as the quantile of boostrap estimation.
+
+
+##### Question1.iii.a
+
+
+```{r}
+set.seed(seed = 555)
+P <- 10^5-1
+PerRatio <- vector("numeric", P)
+for(i in seq_along(1:P)){
+  Permutation <- sample(ProCost$Cost, replace = F)
+  PerOld <- Permutation[1:OldL]
+  PerNew <- Permutation[(OldL+1):(OldL+NewL)]
+  PerRatio[i] <- mean(PerNew)/mean(PerOld)
+}
+PerRatioMean <- mean(PerRatio)
+hist(PerRatio, main = "Permutation Distribution for New/Standard Ratio", xlab = "Permutation of Ratio")
+abline(v = ObRatio, col = "red", lwd = 2)
+abline(v = PerRatioMean, col = "blue", lwd = 1)
+PerRatiopvalue <- 2*(sum(PerRatio <= ObRatio)+1)/(P + 1)
+cat("The permutation two-sided p-value is", PerRatiopvalue, ".\n")
+```
+
+Because in this specific case, we are calculating the p-value with two-side alternative hypotheses, we need to conduct both one-sided tests and multiply the smaller p-value by 2. The p-value is calculated through `r2*(sum(PerRatioMean >= ObRatio)+1)/(P + 1)`
+
+Based on what the result from homework3, we can see the Cost between New procedure and the Standard procedure are totally different from each other. Hence the null hypothesis, statmented of these two groups distribution are the equal, is rejected. This work is consistent with the result we got weeks before. To use permutation to simulate the New/Standard Ratio is not a good idea for this project.
+
+
+##### Question1.iii.b
+
+Definitely not, the assumptions of permutation and bootstrap are totally different. Normally we do not use both of them together. Moreover, permutation of the result is probably not a good choice for New/Standard cost ratio.
+
+_ _ _
+
+##### Question2.i
+
+```{r}
+library(survival)
+library(epiR)
+CostTable <- matrix(nrow = 2, byrow = T, c(65, 15, 72, 48), dimnames = list(c("Old", "New"), c("Zero", "NonZero")))
+epi.2by2(CostTable)
+
+```
+
+
+The risk difference indicates as 21.25 % (With a CI of 9, 33.5) and we have a null hypothesis value of 0, and because our 95% CI does not include 0, we reject the null hypothesis and there is a significant difference in the risk between the two groups. 
+
+This also means that we will have a significant p-value (>0.05) for the risk difference. For the risk ratio, we have a value of 1.35 with a CI of (1.13, 1.62). 
+
+The null hypothesis suggests the risk ratio as 1 (that there is no difference for each group) and the true value is larger than 1, and the CI does not include 1. Hence we reject the null hypothesis. In this case, The New procedure group has an increased risk of a Zero Cost (or that they are more likely to spend less money than for the old procedure group). 
+
+For the odds ratio is 2.89 with a CI of (1.48, 5.64). The null value here is also 1, and because it is not contained in the CI, we can assume a small p-value and reject the null that the odds of the risk between groups are the same. So the New Procedure group are 2.89 times as large as the odds of the Old Procedure group to have Zero Cost.
+
+##### Question2.ii.a
+
+```{r}
+ChiNate <- chisq.test(CostTable, correct = FALSE); ChiNate
+ChiYate <- chisq.test(CostTable, correct = TRUE); ChiYate
+Fisher <- fisher.test(CostTable); Fisher
+Mcnemar <- mcnemar.test(CostTable, correct=TRUE); Mcnemar 
+```
+
+##### Question2.ii.b    
+ 
+McNemar's chi-squared test is based on pairwaise the samples, but clearly the procedure's costs are not paired data. So McNemar is the first ruled out;   
+
+For large samples Fisher's exact test is computationally intensive; but both Fisher's exact p-value and  $\chi^2 $ test p-value provide similar results. Because we are fit the continuous data (Cost) into discrete data, the $\chi^2 $ test p-value with Yate's correction will be prefered.
+
+
+##### Question2.ii.c
+
+According to the results from $\chi^2 $ test with Yate's continuity correction and Fisher's exact test, the p-value is less than 0.05. So we can reject the null hypothesis. The different procedures do affect the cost of the treatment.   

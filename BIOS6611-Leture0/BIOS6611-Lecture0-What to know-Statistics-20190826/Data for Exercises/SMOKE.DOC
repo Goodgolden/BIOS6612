@@ -1,0 +1,23 @@
+SMOKE.DOC
+
+Variable              Columns         Code
+-----------------------------------------------------
+ID number               1-3
+Age                     4-5
+Gender                  6           1=male/2=female
+Cigarettes/day          7-8        
+Carbon monoxide (CO)    9-11      
+   (X 10)
+Minutes elapsed since   
+last cigarette         12-15
+Log CO Adj * (X 1000)  16-19
+Days abstinent         20-22        Those abstinent less than 1 day
+                                    were given a value of zero.
+--------------------------------------------------------------------
+* This variable represents adjusted carbon monoxide (CO) values. CO values
+were adjusted for minutes elapsed since last cigarette smokded using the formula
+Log 10 CO (Adjusted) = Log 10 CO - (-0.000638) X (Min - 80), where Min is the
+number of minutes elapsed since the last cigarette smoked.
+
+
+

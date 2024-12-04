@@ -1,0 +1,228 @@
+
+
+```{r Packages}
+library(tidyverse)
+library(ggplot2)
+library(readr)
+library(car)
+library(MASS)
+library(broom)
+library(table1)
+library(epitools)
+```
+
+```{r Tibble1}
+MoleData <- read_csv("C:/Users/Goodgolden5/Desktop/BIOS6611-Alexander Kaizer/BIOS6611-Final Project/Mole Count Data 2004-2008.csv") %>% 
+  as_tibble() %>% 
+  mutate(inc2005=molecount2005-molecount2004,
+         inc2006=molecount2006-molecount2005,
+         inc2007=molecount2007-molecount2006,
+         inc2008=molecount2008-molecount2007,
+         vac2006=`number vacs  birth thru 2006`-`number vacs birth thru 2005`,
+         vac2007=`number vacs  birth thru 2007`-`number vacs  birth thru 2006`) %>%
+  gather(`molecount2004`:`molecount2008`, key="year", value ="molecount") %>% 
+  gather(`number vacs birth thru 2005`:`number vacs  birth thru 2007`, key="vac", value="vacnum") %>% 
+  gather(`inc2005`:`inc2008`, key="incmole", value="moleinyear") %>%
+  gather(`vac2006`:`vac2007`, key="incvac", value="vacinyear") %>%
+  separate(year, into=c("M","year"), sep=9) %>%
+  separate(vac, into=c("T", "vactotalyear"), sep="thru ") %>%
+  separate(incmole, into=c("I", "moleyear"), sep=3) %>%
+  separate(incvac, into=c("V", "vacyear"), sep=3) %>%
+  rename(id=`Respondent Code Number`, oca2=`oca2 status`) %>%
+  rename(eye=eyecolor,
+         race=hispanic,
+         hair=haircolor) %>%
+  dplyr::select(-"M", -"T", -"I", -"V") %>%
+  filter(vacyear<=moleyear) %>%
+  filter(vacyear>=year) %>%
+  arrange(id, vacyear)
+MoleData$oca2 <- factor(MoleData$oca2,
+                        levels=c("0", "1", "2"),
+                        labels=c("gg", "ga", "aa"))
+MoleData$gender <- factor(MoleData$gender,
+                        levels=c("1", "2"),
+                        labels=c("Female", "Male"))
+MoleData$race <- factor(MoleData$race,
+                        levels=c("0", "1"),
+                        labels=c("Caucasian", "Hispanic"))
+MoleData$eye <- factor(MoleData$eye, 
+                       levels=c("1", "2", "3"),
+                        labels=c("Blue/Green", "Brown", "Hazel"))
+MoleData$hair <- factor(MoleData$hair,
+                        labels=c("Blonde", "Red", "Brown", "Black"),
+                        levels=c("1", "2", "3", "4"))
+View(MoleData)
+```
+
+
+```{r Tibble for LM1, echo=TRUE}
+Mole0 <- MoleData %>% 
+  dplyr::select(id, oca2, gender, race, eye, hair, baseskincolor, molecount) %>%
+  arrange(id, molecount) %>%
+  na.omit() %>%
+  distinct()
+table1::table1(~oca2+eye+hair+baseskincolor+molecount|gender*race, 
+              data=Mole0, 
+              overall="Total", 
+              topclass="Rtable1-grid", 
+              main="Table 1", 
+              render.continuous=c(.="Mean (SD)", .="Median [Min, Max]"))
+View(Mole0)
+Mole1 <- MoleData %>% 
+  dplyr::select(id, oca2, gender, race, eye, hair, baseskincolor, molecount) %>%
+  na.omit() %>%
+  distinct() %>%
+  group_by(id, oca2, gender, race, eye, hair, baseskincolor) %>%
+  summarize(Molecount = max(molecount))
+```
+
+```{r}
+p <- ggplot(Mole1, aes(x=log2(baseskincolor), y=log2(Molecount)))
+p + 
+  geom_point(aes(color=gender)) +
+  geom_smooth(method="lm", se=T, size=1, color="purple") + 
+  facet_grid(race~oca2, margins=T) +
+  theme_linedraw() +
+  ggthemes::scale_colour_wsj("colors6") +
+  ggtitle("Mole data", "gender, race, and genetic effects") +
+  labs(x="Base Skin Color Index", y="Max Number of Moles")+
+  theme(legend.title = element_blank(), legend.justification = "top")
+```
+
+```{r}
+models <- Mole1 %>%
+  group_by(race, gender, oca2) %>%
+  do(mod = lm(log2(Molecount)~log2(baseskincolor), data=., na.action=na.exclude))
+model_sum <- models %>% broom::glance(mod)
+
+ggplot(model_sum, aes(r.squared, reorder(`gender`, r.squared)))+
+  geom_point(aes(color=gender)) +
+  facet_grid(race~oca2, margins=T) +
+  theme_linedraw() +
+  ggthemes::scale_colour_wsj("colors6") +
+  ggtitle("Mole data", "gender, race, and genetic effects") +
+  labs(y="Linear Regression Models", x=expression(R^2)) +
+  theme(legend.position="none") 
+obs_sum <- models %>% augment(mod)
+obs_res <- list(obs_sum$.std.resid) %>% transmute(frequency=)
+```
+
+```{r Bootstrap, fig.height=7, fig.width=6}
+ggplot(obs_sum, aes(.std.resid)) +
+  geom_histogram(binwidth=0.1) +
+  ggtitle("Mole data", "gender, race, and genetic effects") +
+  labs(y="count", x="Studentized Residuals") +
+  theme_linedraw() +
+  ggthemes::scale_colour_wsj("colors6") +
+  facet_grid(race*gender~oca2, margins=T)
+tcoefs <- models %>% 
+  tidy(mod)
+```
+
+```{r}
+Mole2 <- Mole1 %>% 
+  filter(race=="Caucasian" && gender=="Male" && oca2=="gg") 
+Mole_lm_cmgg <- lm(log2(Molecount)~log2(baseskincolor), Mole2)
+coef(summary(Mole_lm_cmgg))
+Mole2_res <- resid(Mole_lm_cmgg)
+Mole3 <- Mole1 %>% 
+  filter(race=="Hispanic" && gender=="Female" && oca2=="aa") 
+Mole_lm_hfaa <- lm(log2(Molecount)~log2(baseskincolor), Mole3)
+coef(summary(Mole_lm_hfaa))
+Mole3_res <- resid(Mole_lm_hfaa)
+set.seed(seed=555)
+N <- 10000
+Boots2 <- vector("numeric", length(Mole2_res))
+for(i in seq_along(1:N)){
+  Bootstrap2 <- sample(Mole2_res, length(Mole2_res), replace = T)
+  Boots2[i] <- mean(Bootstrap2)
+}
+set.seed(seed=555)
+N <- 10000
+Boots3 <- vector("numeric", length(Mole3_res))
+for(i in seq_along(1:N)){
+  Bootstrap3 <- sample(Mole3_res, length(Mole3_res), replace = T)
+  Boots3[i] <- mean(Bootstrap3)
+}
+par(mfrow=c(2,2))
+hist(Boots2, main = "Bootstrap")
+abline(v = mean(Boots2), col = "red", lwd = 2)
+qqnorm(Boots2)
+qqline(Boots2)
+hist(Boots3, main = "Bootstrap")
+abline(v = mean(Boots3), col = "red", lwd = 2)
+qqnorm(Boots3)
+qqline(Boots3)
+```
+
+```{r}
+Mole_lm_nontrans_adjust <- lm(Molecount~gender+race+baseskincolor+hair+eye+oca2, Mole1)
+Mole_lm_nontrans_crude <- lm(Molecount~gender+race+oca2, Mole1)
+par(mfrow=c(2,2))
+plot(Mole_lm_nontrans_crude)
+plot(Mole_lm_nontrans_adjust)
+Mole_lm_adjust <- lm(log2(Molecount)~gender+race+log2(baseskincolor)+hair+eye+oca2, Mole1)
+Mole_lm_crude <- lm(log2(Molecount)~gender+race+oca2, Mole1)
+par(mfrow=c(2,2))
+plot(Mole_lm_crude)
+plot(Mole_lm_adjust)
+summary(Mole_lm_crude);
+summary(Mole_lm_adjust)
+anova(Mole_lm_crude, Mole_lm_adjust)
+
+MoleAov <- aov(log2(Molecount)~gender+race+oca2+log2(baseskincolor), data=Mole1)
+summary(MoleAov)
+
+Mole_glm <- glm(log2(Molecount)~gender+race+log2(baseskincolor)+hair+eye+oca2+(gender+race+log2(baseskincolor)+hair+eye+oca2)^2, data=Mole1)
+Mole_step <- MASS::stepAIC(Mole_glm, ~gender+race+log2(baseskincolor)+hair+eye+oca2+ (gender+race+log2(baseskincolor)+hair+eye+oca2)^2, direction="backward", trace=F)
+summary(Mole_step)
+```
+
+```{r}
+Mole4 <- MoleData %>% 
+  filter(vacyear==moleyear) %>%
+  na.omit() %>% 
+  dplyr::select(id, gender, race, moleyear, moleinyear, vacinyear) %>%
+  distinct() 
+View(Mole4)
+table1::table1(~moleinyear+vacinyear|moleyear, 
+              data=Mole4, 
+              overall="Total", 
+              topclass="Rtable1-grid", 
+              main="Table 1", 
+              render.continuous=c(.="Mean (SD)", .="Median [Min, Max]"))
+a <- Mole4 %>% filter(moleinyear>0) %>% filter(vacinyear>0) %>% count()
+b <- Mole4 %>% filter(moleinyear<=0) %>% filter(vacinyear>0) %>% count()
+c <- Mole4 %>% filter(moleinyear>0) %>% filter(vacinyear==0) %>% count()
+d <- Mole4 %>% filter(moleinyear<=0) %>% filter(vacinyear==0) %>% count()
+MoleTable <- matrix(nrow = 2, byrow = T, c(a[[1]], b[[1]], c[[1]], d[[1]]), dimnames = list(c("Vacation", "NoVacation"), c("Mole", "NoMole")))
+epiR::epi.2by2(MoleTable)
+ChiYate <- chisq.test(MoleTable, correct = TRUE); ChiYate
+```
+```{r Permutation, fig.height=5, fig.width=5}
+P <- 10^5-1
+MoleExpand <- expand.table(MoleTable)
+Chisq <- function(Obs){
+  Exp <- outer(rowSums(Obs),colSums(Obs))/sum(Obs)
+  sum((Obs-Exp)^2/Exp)
+}
+Exposure <- MoleExpand[, 1]
+Symptom <- MoleExpand[, 2]
+ObsV <- Chisq(table(Exposure, Symptom))
+PerChi <- vector("numeric", P)
+for(i in seq_along(1:P)){
+  ExPer <- sample(Exposure, replace = F)
+  PerTable <-table(ExPer, Symptom)
+  PerChi[i] <- Chisq(PerTable)
+}
+```
+
+```{r}
+hist(PerChi, freq = F, xlab = expression(Chi^2), main="Permutation for Chi-Square")
+abline(v = ObsV, col = "red", lty = 2)
+curve(dchisq(x, 1), add = T, col = "blue", lwd = 1)
+Prepvalue <- (sum(PerChi >= ObsV)+1)/(P+1)
+Obspvalue <- 1 - pchisq(ObsV, df = 1)
+cat("The permutation p-value is", Prepvalue, "\n")
+cat("The Chi-square distribution p-value is", Obspvalue, "\n")
+```

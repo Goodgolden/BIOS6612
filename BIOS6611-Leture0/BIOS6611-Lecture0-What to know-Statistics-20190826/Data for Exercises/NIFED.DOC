@@ -1,0 +1,26 @@
+NIFED.DOC
+
+Column       Variable               Code
+-----------------------------------------------------------------------------
+ 1-2         ID
+ 4           Treatment group        N=nifedipine/P=placebo
+ 6-8         Baseline heart rate*   beats/min
+10-12        Level 1 heart rate+    beats/min
+14-16        Level 2 heart rate     beats/min
+18-20        Level 3 heart rate     beats/min
+22-24        Baseline systolic bp*  mm Hg
+26-28        Level 1 systolic bp    mm Hg
+30-32        Level 2 systolic bp    mm Hg
+34-36        Level 3 systolic bp    mm Hg
+-----------------------------------------------------------------------------
+* Immediately prior to randomization.
++ Highest heart rate and systolic blood pressure at baseline and each level of
+  therapy respectively.
+Blank values indicate that either
+(a) the patient withdrew from the study prior to entering this level of therapy
+(b) the patient achieved pain relief prior to reaching this level or therapy,
+or (c) the patient encountered this level of therapy, but this particular piece
+       of data was missing.
+
+
+
